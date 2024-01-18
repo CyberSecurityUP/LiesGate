@@ -1,9 +1,6 @@
 #include <Windows.h>
 #include <iostream>
 
-
-
-
 uint32_t ROR13Hash(const char* functionName) {
     uint32_t functionHash = 0;
     for (int i = 0; functionName[i] != '\0'; i++) {
@@ -55,6 +52,10 @@ bool VerifyModification(FARPROC funcAddr, DWORD expectedSSN) {
     return pFunction[0] == 0xB8 && ssn == expectedSSN;
 }
 
+DWORD GetCurrentSSN(FARPROC funcAddr) {
+    BYTE* pFunction = reinterpret_cast<BYTE*>(funcAddr);
+    return *reinterpret_cast<DWORD*>(&pFunction[1]);
+}
 
 int main() {
     DWORD ssnNtDelayExecution = GetSSN("NtDelayExecution");
@@ -75,6 +76,10 @@ int main() {
         if (ModifyFunctionToSyscall(ssnNtAllocateVirtualMemory, addrNtDrawText) &&
             VerifyModification(addrNtDrawText, ssnNtAllocateVirtualMemory)) {
             std::cout << "NtDrawText foi modificada com sucesso!" << std::endl;
+
+            // Exibir o SSN atual após a modificação
+            DWORD currentSSN = GetCurrentSSN(addrNtDrawText);
+            std::cout << "O novo SSN de NtDrawText é: " << currentSSN << std::endl;
         }
         else {
             std::cout << "Falha ao modificar NtDrawText." << std::endl;
