@@ -2,12 +2,6 @@
 #include <iostream>
 
 
-bool VerifyModification(FARPROC funcAddr, DWORD expectedSSN) {
-    BYTE* pFunction = (BYTE*)funcAddr;
-    DWORD ssn = *(DWORD*)(pFunction + 0x4);
-
-    return ssn == expectedSSN;
-}
 
 
 uint32_t ROR13Hash(const char* functionName) {
@@ -37,22 +31,30 @@ DWORD GetSSN(LPCSTR functionName) {
 }
 
 
-void ModifyFunctionToSyscall(DWORD ssn, FARPROC funcAddr) {
-    // A função deve ser modificada para fazer a chamada da syscall
-    // Isto é apenas um exemplo e provavelmente não funcionará na prática
-    BYTE* pFunction = (BYTE*)funcAddr;
+
+bool ModifyFunctionToSyscall(DWORD ssn, FARPROC funcAddr) {
+    BYTE* pFunction = reinterpret_cast<BYTE*>(funcAddr);
     DWORD oldProtect;
 
-    // Desprotege a memória para escrita
-    if (VirtualProtect(pFunction, 8, PAGE_EXECUTE_READWRITE, &oldProtect)) {
-        // Escreve um código que move o SSN para o registrador eax (x86) ou rax (x64)
-        pFunction[0] = 0xB8; // Opcode para mov eax, imm32
-        *(DWORD*)(pFunction + 1) = ssn; // SSN
-
-        // Restaura a proteção original da página
-        VirtualProtect(pFunction, 8, oldProtect, &oldProtect);
+    if (VirtualProtect(pFunction, 10, PAGE_EXECUTE_READWRITE, &oldProtect)) {
+        pFunction[0] = 0xB8;
+        *reinterpret_cast<DWORD*>(&pFunction[1]) = ssn;
+        pFunction[5] = 0x0F;
+        pFunction[6] = 0x05;
+        pFunction[7] = 0xC3;
+        VirtualProtect(pFunction, 10, oldProtect, &oldProtect);
+        return true;
     }
+    return false;
 }
+
+
+bool VerifyModification(FARPROC funcAddr, DWORD expectedSSN) {
+    BYTE* pFunction = reinterpret_cast<BYTE*>(funcAddr);
+    DWORD ssn = *reinterpret_cast<DWORD*>(&pFunction[1]);
+    return pFunction[0] == 0xB8 && ssn == expectedSSN;
+}
+
 
 int main() {
     DWORD ssnNtDelayExecution = GetSSN("NtDelayExecution");
@@ -67,11 +69,11 @@ int main() {
     std::cout << "SSN de NtAllocateVirtualMemory: " << ssnNtAllocateVirtualMemory << std::endl;
     std::cout << "SSN de NtDrawText: " << ssnNtDrawText << std::endl;
 
+
     FARPROC addrNtDrawText = GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtDrawText");
     if (addrNtDrawText != nullptr) {
-        ModifyFunctionToSyscall(ssnNtAllocateVirtualMemory, addrNtDrawText);
-
-        if (VerifyModification(addrNtDrawText, ssnNtAllocateVirtualMemory)) {
+        if (ModifyFunctionToSyscall(ssnNtAllocateVirtualMemory, addrNtDrawText) &&
+            VerifyModification(addrNtDrawText, ssnNtAllocateVirtualMemory)) {
             std::cout << "NtDrawText foi modificada com sucesso!" << std::endl;
         }
         else {
