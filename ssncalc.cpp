@@ -1,5 +1,16 @@
+#include <ntstatus.h>
 #include <Windows.h>
+#include <winternl.h> // Para PROCESS_BASIC_INFORMATION e funções internas do Windows
+#include <ntstatus.h> // Para códigos de status
 #include <iostream>
+
+typedef NTSTATUS(NTAPI* _NtQueryInformationProcess)(
+    HANDLE ProcessHandle,
+    PROCESSINFOCLASS ProcessInformationClass,
+    PVOID ProcessInformation,
+    ULONG ProcessInformationLength,
+    PULONG ReturnLength
+    );
 
 uint32_t ROR13Hash(const char* functionName) {
     uint32_t functionHash = 0;
@@ -137,6 +148,30 @@ int main() {
             std::cout << "Falha ao modificar NtDrawText para usar SSN de NtQueryInformationProcess." << std::endl;
         }
     }
+
+    _NtQueryInformationProcess MyNtQueryInformationProcess =
+        (_NtQueryInformationProcess)GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtQueryInformationProcess");
+
+    PROCESS_BASIC_INFORMATION pbi;
+    ULONG returnLength;
+
+    NTSTATUS status = MyNtQueryInformationProcess(
+        GetCurrentProcess(),
+        ProcessBasicInformation,
+        &pbi,
+        sizeof(pbi),
+        &returnLength
+    );
+
+    if (status != STATUS_SUCCESS) {
+        std::cerr << "Falha ao obter informações do processo." << std::endl;
+        return 1;
+    }
+
+    // Exibindo informações do PEB
+    std::cout << "Base do PEB: " << pbi.PebBaseAddress << std::endl;
+    std::cout << "PID do Processo: " << pbi.UniqueProcessId << std::endl;
+    // O campo InheritedFromUniqueProcessId não está disponível na estrutura oficial
 
 
     if (addrNtDrawText != nullptr) {
