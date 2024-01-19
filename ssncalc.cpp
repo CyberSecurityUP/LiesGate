@@ -64,14 +64,49 @@ int main() {
     DWORD ssnNtAllocateVirtualMemory = GetSSN("NtAllocateVirtualMemory");
     DWORD ssnNtDrawText = GetSSN("NtDrawText");
 
+
+
     std::cout << "SSN de NtDelayExecution: " << ssnNtDelayExecution << std::endl;
     std::cout << "SSN de NtSetInformationThread: " << ssnNtSetInformationThread << std::endl;
     std::cout << "SSN de NtYieldExecution: " << ssnNtYieldExecution << std::endl;
     std::cout << "SSN de NtAllocateVirtualMemory: " << ssnNtAllocateVirtualMemory << std::endl;
     std::cout << "SSN de NtDrawText: " << ssnNtDrawText << std::endl;
 
+    FARPROC addrNtDelayExecution = GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtDelayExecution");
+    FARPROC addrNtSetInformationThread = GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtSetInformationThread");
+    FARPROC addrNtYieldExecution = GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtYieldExecution");
+    FARPROC addrNtAllocateVirtualMemory = GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtAllocateVirtualMemory");
+
+
+    std::cout << "Endereço de NtDelayExecution: " << addrNtDelayExecution << std::endl;
+    std::cout << "Endereço de NtSetInformationThread: " << addrNtSetInformationThread << std::endl;
+    std::cout << "Endereço de NtYieldExecution: " << addrNtYieldExecution << std::endl;
+    std::cout << "Endereço de NtAllocateVirtualMemory: " << addrNtAllocateVirtualMemory << std::endl;
+
+    DWORD ssnNtQueryInformationProcess = GetSSN("NtQueryInformationProcess");
+    std::cout << "SSN de NtQueryInformationProcess: " << ssnNtQueryInformationProcess << std::endl;
+    
+    FARPROC addrNtQueryInformationProcess = GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtQueryInformationProcess");
+    std::cout << "Endereço de NtQueryInformationProcess: " << addrNtQueryInformationProcess << std::endl;
+
 
     FARPROC addrNtDrawText = GetProcAddress(GetModuleHandleA("ntdll.dll"), "NtDrawText");
+    std::cout << "Endereço de NtDrawText: " << addrNtDrawText << std::endl;
+
+    if (addrNtDrawText != nullptr) {
+        if (ModifyFunctionToSyscall(ssnNtQueryInformationProcess, addrNtDrawText) &&
+            VerifyModification(addrNtDrawText, ssnNtQueryInformationProcess)) {
+            std::cout << "NtDrawText foi modificada para usar SSN de NtQueryInformationProcess com sucesso!" << std::endl;
+
+            // Exibir o SSN atual após a modificação
+            DWORD currentSSN = GetCurrentSSN(addrNtDrawText);
+            std::cout << "O novo SSN de NtDrawText é: " << currentSSN << std::endl;
+        }
+        else {
+            std::cout << "Falha ao modificar NtDrawText para usar SSN de NtQueryInformationProcess." << std::endl;
+        }
+    }
+
     if (addrNtDrawText != nullptr) {
         if (ModifyFunctionToSyscall(ssnNtAllocateVirtualMemory, addrNtDrawText) &&
             VerifyModification(addrNtDrawText, ssnNtAllocateVirtualMemory)) {
