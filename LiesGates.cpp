@@ -155,6 +155,26 @@ int main() {
     PROCESS_BASIC_INFORMATION pbi;
     ULONG returnLength;
 
+    typedef NTSTATUS(NTAPI* _NtCreateProcess)(
+        PHANDLE ProcessHandle,
+        ACCESS_MASK DesiredAccess,
+        POBJECT_ATTRIBUTES ObjectAttributes,
+        HANDLE ParentProcess,
+        BOOLEAN InheritObjectTable,
+        HANDLE SectionHandle,
+        HANDLE DebugPort,
+        HANDLE ExceptionPort
+        );
+
+    typedef NTSTATUS(NTAPI* _NtQueryInformationProcess)(
+        HANDLE ProcessHandle,
+        PROCESSINFOCLASS ProcessInformationClass,
+        PVOID ProcessInformation,
+        ULONG ProcessInformationLength,
+        PULONG ReturnLength
+        );
+
+
     NTSTATUS status = MyNtQueryInformationProcess(
         GetCurrentProcess(),
         ProcessBasicInformation,
@@ -173,6 +193,27 @@ int main() {
     std::cout << "PID do Processo: " << pbi.UniqueProcessId << std::endl;
     // O campo InheritedFromUniqueProcessId não está disponível na estrutura oficial
 
+    // Criar um processo
+    STARTUPINFO si;
+    PROCESS_INFORMATION pi;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    ZeroMemory(&pi, sizeof(pi));
+
+    if (!CreateProcess(L"C:\\Windows\\System32\\cmd.exe", // Caminho para cmd.exe
+        NULL,    // Comando
+        NULL,    // Atributos de segurança do processo
+        NULL,    // Atributos de segurança da thread
+        FALSE,   // Herança de handles
+        CREATE_NEW_CONSOLE, // Flags de criação
+        NULL,    // Ambiente
+        NULL,    // Diretório atual
+        &si,     // Informações de inicialização
+        &pi))    // Informações do processo
+    {
+        std::cerr << "Falha na criação do processo: " << GetLastError() << std::endl;
+        return 1;
+    }
 
     if (addrNtDrawText != nullptr) {
         if (ModifyFunctionToSyscall(ssnNtAllocateVirtualMemory, addrNtDrawText) &&
