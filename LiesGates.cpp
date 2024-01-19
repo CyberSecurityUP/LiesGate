@@ -1,7 +1,7 @@
 #include <ntstatus.h>
 #include <Windows.h>
-#include <winternl.h> // Para PROCESS_BASIC_INFORMATION e funções internas do Windows
-#include <ntstatus.h> // Para códigos de status
+#include <winternl.h> 
+#include <ntstatus.h> 
 #include <iostream>
 
 typedef NTSTATUS(NTAPI* _NtQueryInformationProcess)(
