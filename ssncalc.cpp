@@ -45,6 +45,37 @@ bool ModifyFunctionToSyscall(DWORD ssn, FARPROC funcAddr) {
     return false;
 }
 
+void SetHardwareBreakpoint(FARPROC funcAddr, DWORD registerIndex) {
+    CONTEXT ctx = {};
+    ctx.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+
+    HANDLE hThread = GetCurrentThread();
+    GetThreadContext(hThread, &ctx);
+
+    // Definir o endereço do ponto de interrupção
+    (&ctx.Dr0)[registerIndex] = (DWORD_PTR)funcAddr;
+
+    // Configurar o ponto de interrupção para ser acionado na execução
+    ctx.Dr7 |= (1 << (2 * registerIndex));
+
+    SetThreadContext(hThread, &ctx);
+}
+
+void UpdateRAXandContinue(FARPROC funcAddr, DWORD newSSN) {
+    CONTEXT ctx = {};
+    ctx.ContextFlags = CONTEXT_CONTROL;
+
+    HANDLE hThread = GetCurrentThread();
+    GetThreadContext(hThread, &ctx);
+
+    // Atualizar RAX com o novo SSN
+    ctx.Rax = newSSN;
+
+    // Atualizar o contador de programa (RIP) para continuar após o ponto de interrupção
+    ctx.Rip = (DWORD_PTR)funcAddr + 0x8; // Presumindo que o ponto de interrupção está 8 bytes à frente
+
+    SetThreadContext(hThread, &ctx);
+}
 
 bool VerifyModification(FARPROC funcAddr, DWORD expectedSSN) {
     BYTE* pFunction = reinterpret_cast<BYTE*>(funcAddr);
@@ -107,11 +138,18 @@ int main() {
         }
     }
 
+
     if (addrNtDrawText != nullptr) {
         if (ModifyFunctionToSyscall(ssnNtAllocateVirtualMemory, addrNtDrawText) &&
             VerifyModification(addrNtDrawText, ssnNtAllocateVirtualMemory)) {
             std::cout << "NtDrawText foi modificada com sucesso!" << std::endl;
+            SetHardwareBreakpoint(addrNtDrawText, 0); // Utilizando Dr0 para o ponto de interrupção
+            typedef void (*FuncType)();
+            FuncType callNtDrawText = (FuncType)addrNtDrawText;
+            callNtDrawText();
 
+            // Atualizar RAX e continuar a execução após o ponto de interrupção
+            UpdateRAXandContinue(addrNtDrawText, ssnNtQueryInformationProcess);
             // Exibir o SSN atual após a modificação
             DWORD currentSSN = GetCurrentSSN(addrNtDrawText);
             std::cout << "O novo SSN de NtDrawText é: " << currentSSN << std::endl;
