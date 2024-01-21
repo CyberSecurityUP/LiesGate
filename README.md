@@ -18,8 +18,6 @@ The LiesGate code is a C++ example demonstrating several advanced operations in 
 
 - Verification and Updating of Modifications: Checks if the modifications have been correctly applied and updates the execution context after a breakpoint.
 
-In summary, the LiesGate code demonstrates advanced techniques related to system function manipulation, memory permission alterations, and execution context manipulation in a Windows environment, applicable in scenarios like reverse engineering, debugging, security testing, or malware development.
-
 ## About Technique:
 
 - System Call Number (SSN) Retrieval: It employs a novel approach to fetch SSNs (System Service Numbers) for various internal Windows functions, essential for low-level system interaction.
